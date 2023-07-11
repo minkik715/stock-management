@@ -22,39 +22,37 @@ internal class StockServiceTest @Autowired constructor(
     private val stockId = "12345678-1234-1234-1234-12345678abcd"
 
     @BeforeEach
-    fun beforeEachCreate(){
-        val stock =stockRepository.save(Stock(stockId,1L, 100L))
-
+    fun beforeEachCreate() {
+        stockRepository.saveAndFlush(Stock(stockId, 1L, 100L))
     }
 
     @AfterEach
-    fun afterEachDelete(){
+    fun afterEachDelete() {
         stockRepository.deleteAll()
     }
 
     @Test
     fun decrease() {
-
         val remain = stockService.decrease(stockId, 50L)
         Assertions.assertThat(remain).isEqualTo(50L)
     }
-
 
     @Test
     fun decrease_concurrent() {
         val threadCount = 100;
 
-        val executorService = Executors.newFixedThreadPool(threadCount)
+        val executorService = Executors.newFixedThreadPool(32)
 
         val latch = CountDownLatch(threadCount);
 
-        for (i in 1..threadCount){
-            kotlin.runCatching {
-                executorService.submit {
+        for (i in 1..threadCount) {
+            executorService.submit {
+                kotlin.runCatching {
                     stockService.decrease(stockId, 1)
+                }.also {
+                    latch.countDown()
+
                 }
-            }.getOrDefault{
-                latch.countDown()
             }
         }
         latch.await()
